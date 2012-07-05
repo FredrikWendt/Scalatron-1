@@ -9,6 +9,7 @@ class ControlFunction {
             val view = View( paramMap("view") )
             val previousDirectionStr = if (paramMap.contains("previousDirection")) paramMap("previousDirection") else "1:1"
             val previousDirection = Pos.parse(previousDirectionStr)
+            
             if( generation == 0 ) {
                 
                 if (paramMap.contains("forcedDirection")) {
@@ -17,13 +18,12 @@ class ControlFunction {
                         val stepsLeft = paramMap("stepsLeft").toInt
                         if (stepsLeft > 0) {
                             return "Move(direction=" + dir + ")" +
-                                "|Set(stepsLeft=" + (stepsLeft - 1) + ")" +
-                                "|Set(forcedDirection=" + dir + ")" +
-                                "|Set(previousDirection=" + dir + ")"
+                                "|Set(stepsLeft=" + (stepsLeft - 1) + 
+                                ",forcedDirection=" + dir + 
+                                ",previousDirection=" + dir + ")"
                         }
                     }
                 }
-                
                 
                 val f = view.firstFood
                 if (f != None) {
@@ -38,35 +38,27 @@ class ControlFunction {
                                 "Say(text=BACK OUT)" +
                                 "|Status(text=ENEMY)" +
                                 "|Move(direction=" + inv + ")" +
-                                "|Set(forcedDirection=" + inv + ")" +
-                                "|Set(stepsLeft=5)" +
-                                "|Set(previousDirection=" + inv + ")"
+                                "|Set(forcedDirection=" + inv + ",stepsLeft=5,previousDirection=" + inv + ")"
                             } else {
                                 val twisted = view.getFreeDirection(dir)
                                 "Say(text=OUCH)" +
                                 "|Status(text=ENEMY)" +
                                 "|Move(direction=" + twisted + ")" +
-                                "|Set(forcedDirection=" + twisted + ")" +
-                                "|Set(stepsLeft=5)" +
-                                "|Set(previousDirection=" + twisted + ")"
+                                "|Set(forcedDirection=" + twisted + ",stepsLeft=5,previousDirection=" + twisted + ")"
                             }
                         } else {
                             val twisted = view.getFreeDirection(dir)
                             "Say(text=back out)" +
                             "|Status(text=Wall)" +
                             "|Move(direction=" + twisted + ")" +
-                            "|Set(forcedDirection=" + twisted + ")" +
-                            "|Set(stepsLeft=5)" +
-                            "|Set(previousDirection=" + twisted + ")"
+                            "|Set(forcedDirection=" + twisted + ",stepsLeft=5,previousDirection=" + twisted + ")"
                         }
                     }
                 } else {
                     val twisted = view.getFreeDirection(previousDirection)
                     "Status(text=Scouting)" +
                     "|Move(direction=" + twisted + ")" +
-                    "|Set(forcedDirection=" + twisted + ")" +
-                    "|Set(stepsLeft=5)" +
-                    "|Set(previousDirection=" + twisted + ")"
+                    "|Set(forcedDirection=" + twisted + ",stepsLeft=5,previousDirection=" + twisted + ")"
                 }
             } else "" 
         } else ""
@@ -81,7 +73,7 @@ case class Pos(x:Int, y:Int) {
 
 object Pos {
     def parse(in:String) = {
-    	val v = in.split(':').map(_.toInt)
+        val v = in.split(':').map(_.toInt)
 		Pos(v(0),v(1))
 	}
 }
