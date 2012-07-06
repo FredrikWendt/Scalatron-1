@@ -9,7 +9,6 @@ class ControlFunction {
             val view = View( paramMap("view") )
             val previousDirectionStr = if (paramMap.contains("previousDirection")) paramMap("previousDirection") else "1:1"
             val previousDirection = Pos.parse(previousDirectionStr)
-
             
             if( generation == 0 ) {
                 
