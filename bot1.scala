@@ -9,6 +9,8 @@ class ControlFunction {
             val view = View( paramMap("view") )
             val previousDirectionStr = if (paramMap.contains("previousDirection")) paramMap("previousDirection") else "1:1"
             val previousDirection = Pos.parse(previousDirectionStr)
+
+            
             if( generation == 0 ) {
                 
                 if (paramMap.contains("forcedDirection")) {
@@ -17,56 +19,46 @@ class ControlFunction {
                         val stepsLeft = paramMap("stepsLeft").toInt
                         if (stepsLeft > 0) {
                             return "Move(direction=" + dir + ")" +
-                                "|Set(stepsLeft=" + (stepsLeft - 1) + ")" +
-                                "|Set(forcedDirection=" + dir + ")" +
-                                "|Set(previousDirection=" + dir + ")"
+                                "|Set(stepsLeft=" + (stepsLeft - 1) + 
+                                ",forcedDirection=" + dir + 
+                                ",previousDirection=" + dir + ")"
                         }
                     }
                 }
-                
                 
                 val f = view.firstFood
                 if (f != None) {
                     val dir = view.directionTowardsPos(f.get)
                     if (view.isFree(dir)) {
-                        "Status(text=Found food!)|Move(direction=" + dir + ")" +
+                        "Status(text=Food)" +
+                        "|Move(direction=" + dir + ")" +
                         "|Set(previousDirection=" + dir + ")"
                     } else {
                         if (view.isEnemy(dir)) {
-                            val inv = dir.invertedDirection
-                            if (!view.isEnemy(inv)) {
-                                "Say(text=BACK OUT)" +
-                                "|Status(text=ENEMY)" +
-                                "|Move(direction=" + inv + ")" +
-                                "|Set(forcedDirection=" + inv + ")" +
-                                "|Set(stepsLeft=5)" +
-                                "|Set(previousDirection=" + inv + ")"
-                            } else {
-                                val twisted = view.getFreeDirection(dir)
-                                "Say(text=OUCH)" +
-                                "|Status(text=ENEMY)" +
-                                "|Move(direction=" + twisted + ")" +
-                                "|Set(forcedDirection=" + twisted + ")" +
-                                "|Set(stepsLeft=5)" +
-                                "|Set(previousDirection=" + twisted + ")"
-                            }
+                            val twisted = view.getFreeDirection(dir)
+                            "Say(text=FLEE)" +
+                            "|Status(text=ENEMY)" +
+                            "|Move(direction=" + twisted + ")" +
+                            "|Set(forcedDirection=" + twisted + ",stepsLeft=5,previousDirection=" + twisted + ")"
                         } else {
                             val twisted = view.getFreeDirection(dir)
-                            "Say(text=back out)" +
+                            "Say(text=WALL)" +
                             "|Status(text=Wall)" +
                             "|Move(direction=" + twisted + ")" +
-                            "|Set(forcedDirection=" + twisted + ")" +
-                            "|Set(stepsLeft=5)" +
-                            "|Set(previousDirection=" + twisted + ")"
+                            "|Set(forcedDirection=" + twisted + ",stepsLeft=5,previousDirection=" + twisted + ")"
                         }
                     }
                 } else {
                     val twisted = view.getFreeDirection(previousDirection)
-                    "Status(text=Scouting)" +
-                    "|Move(direction=" + twisted + ")" +
-                    "|Set(forcedDirection=" + twisted + ")" +
-                    "|Set(stepsLeft=5)" +
-                    "|Set(previousDirection=" + twisted + ")"
+                    if (twisted != previousDirection) {
+                        "Status(text=Scouting)" +
+                        "|Move(direction=" + twisted + ")" +
+                        "|Set(forcedDirection=" + twisted + ",stepsLeft=5,previousDirection=" + twisted + ")"
+                    } else {
+                        "Status(text=Scouting)" +
+                        "|Move(direction=" + twisted + ")" +
+                        "|Set(previousDirection=" + twisted + ")"
+                    }
                 }
             } else "" 
         } else ""
@@ -75,15 +67,41 @@ class ControlFunction {
 
 case class Pos(x:Int, y:Int) {
     def direction = Pos( if(x==0) 0 else x/math.abs(x), if(y==0) 0 else y/math.abs(y) )
-    def invertedDirection = Pos(y, x)
     override def toString = x+":"+y
 }
 
 object Pos {
     def parse(in:String) = {
-    	val v = in.split(':').map(_.toInt)
-		Pos(v(0),v(1))
+        val v = in.split(':').map(_.toInt)
+    	Pos(v(0),v(1))
 	}
+}
+
+import util.Random
+
+object Direction {
+    val dirs = "-1:-1 0:-1 1:-1 1:0 1:1 0:1 -1:1 -1:0".split(" ").map(Pos.parse(_))
+    def turn(dir:Pos, clockWise: Boolean) = {
+        val index = dirs.indexOf(dir)
+        if (index == -1) {
+            throw new IllegalArgumentException("Can't find index of " + dir + " in " + dirs)
+        }
+        if (clockWise) {
+            // clock wise
+            if (index == (dirs.length - 1)) {
+                dirs(0)
+            } else {
+                dirs(index + 1)
+            }
+        } else {
+            // counter clock wise
+            if (index == 0) {
+                dirs(dirs.length - 1)
+            } else {
+                dirs(index - 1)
+            }
+        }
+    }
 }
 
 case class View(data:String) {
@@ -98,35 +116,26 @@ case class View(data:String) {
 			Some( food.map(p => indexToPos(p._2)).minBy( distanceToPos(_) ) )
 	}
 
-    def firstFree:Option[Pos] = {
-		val free = data.view.zipWithIndex.filter(p => p._1 == '_' || p._1 == 'P' || p._1 == 'B')
-		if (free.isEmpty)
-			None
-		else
-			Some( free.map(p => indexToPos(p._2)).minBy( distanceToPos(_) ) )
-	}
-    
+    // should really look as far as possible in all directions and choose the most open
     def getFreeDirection(currentDirection:Pos) = {
-        this.firstFree match {
-            case Some(p) => this.directionTowardsPos(p)
-            case None => currentDirection.invertedDirection
+        val random = new Random()
+        this._getFreeDirection(currentDirection, 0, random.nextBoolean)
+    }
+    
+    def _getFreeDirection(currentDirection: Pos, turns: Int, turnClockWise: Boolean):Pos = {
+        if (turns == 8 || this.isFree(currentDirection)) {
+            currentDirection
+        } else {
+            this._getFreeDirection(Direction.turn(currentDirection, turnClockWise), turns + 1, turnClockWise)
         }
     }
-
-    def firstEnemy:Option[Pos] = {
-		val food = data.view.zipWithIndex.filter(p => p._1 == 'b' || p._1 == 's')
-		if (food.isEmpty)
-			None
-		else
-			Some( food.map(p => indexToPos(p._2)).minBy( distanceToPos(_) ) )
-	}
 
     def apply(pos:Pos) = data( posToIndex(pos) )
     def isFree(pos:Pos) = "BP_".contains(this.apply(pos))
     def isEnemy(pos:Pos) = "bs".contains(this.apply(pos))
 	def posToIndex(p:Pos) = (p.y+delta)*dimension + delta + p.x
 	def indexToPos(i:Int):Pos = Pos(i%dimension-delta, i/dimension-delta)
-	def distanceToPos(pos:Pos) = (math.abs(pos.x)+math.abs(pos.y)).toInt
+	def distanceToPos(pos:Pos) = math.sqrt(pos.x*pos.x + pos.y*pos.y)
     def directionTowardsPos(pos:Pos) = {
         val x = if (pos.x == 0) 0 else math.abs(pos.x)/pos.x
         val y = if (pos.y == 0) 0 else math.abs(pos.y)/pos.y
@@ -156,4 +165,3 @@ object CommandParser {
 class ControlFunctionFactory {
     def create = new ControlFunction().respond _
 }
-
