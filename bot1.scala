@@ -72,8 +72,8 @@ case class Pos(x:Int, y:Int) {
 object Pos {
     def parse(in:String) = {
         val v = in.split(':').map(_.toInt)
-    	Pos(v(0),v(1))
-	}
+        Pos(v(0),v(1))
+    }
 }
 
 import util.Random
@@ -105,15 +105,15 @@ object Direction {
 
 case class View(data:String) {
     val dimension = math.sqrt(data.length).toInt
-	val delta = ((dimension-1) / 2)
+    val delta = ((dimension-1) / 2)
 
-	def firstFood:Option[Pos] = {
-		val food = data.view.zipWithIndex.filter(p => p._1 == 'P' || p._1 == 'B')
-		if (food.isEmpty)
-			None
-		else
-			Some( food.map(p => indexToPos(p._2)).minBy( distanceToPos(_) ) )
-	}
+    def firstFood:Option[Pos] = {
+        val food = data.view.zipWithIndex.filter(p => p._1 == 'P' || p._1 == 'B')
+        if (food.isEmpty)
+            None
+        else
+            Some( food.map(p => indexToPos(p._2)).minBy( distanceToPos(_) ) )
+    }
 
     // should really look as far as possible in all directions and choose the most open
     def getFreeDirection(currentDirection:Pos) = {
@@ -132,9 +132,9 @@ case class View(data:String) {
     def apply(pos:Pos) = data( posToIndex(pos) )
     def isFree(pos:Pos) = "BP_".contains(this.apply(pos))
     def isEnemy(pos:Pos) = "bs".contains(this.apply(pos))
-	def posToIndex(p:Pos) = (p.y+delta)*dimension + delta + p.x
-	def indexToPos(i:Int):Pos = Pos(i%dimension-delta, i/dimension-delta)
-	def distanceToPos(pos:Pos) = math.sqrt(pos.x*pos.x + pos.y*pos.y)
+    def posToIndex(p:Pos) = (p.y+delta)*dimension + delta + p.x
+    def indexToPos(i:Int):Pos = Pos(i%dimension-delta, i/dimension-delta)
+    def distanceToPos(pos:Pos) = math.sqrt(pos.x*pos.x + pos.y*pos.y)
     def directionTowardsPos(pos:Pos) = {
         val x = if (pos.x == 0) 0 else math.abs(pos.x)/pos.x
         val y = if (pos.y == 0) 0 else math.abs(pos.y)/pos.y
